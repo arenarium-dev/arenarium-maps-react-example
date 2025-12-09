@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from 'react'
 import reactLogo from './assets/react.svg'
 import './App.css'
 
-import { MapManager, type MapMarker } from "@arenarium/maps";
-import { MaplibreProvider, MaplibreLightStyle } from "@arenarium/maps/maplibre";
-import "@arenarium/maps/dist/style.css";
+import { MapManager, type MapMarkerData } from "@arenarium/maps";
+import { MaplibreProvider, MaplibreLightStyle } from "@arenarium/maps-integration-maplibre";
+import "@arenarium/maps/style.css";
 
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -42,9 +42,9 @@ function App() {
   const mapManager = useRef<MapManager>(null);
   const map = useRef<maplibregl.Map>(null);
 
-  const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
+  const [mapMarkers, setMapMarkers] = useState<MapMarkerData[]>([]);
 
-  const markerRefs = useRef<MapMarker[]>([]);
+  const markerRefs = useRef<MapMarkerData[]>([]);
   const pinRefs = useRef<(HTMLDivElement | null)[]>([]);
   const tooltipRefs = useRef<(HTMLDivElement | null)[]>([]);
   const popupRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -60,9 +60,10 @@ function App() {
       zoom: 8,
     });
 
-    mapManager.current = new MapManager(import.meta.env.VITE_API_KEY, mapProvider);
-    map.current = mapProvider.getMap();
-    map.current.on("click", onMapClick);
+    MapManager.create(import.meta.env.VITE_API_KEY, mapProvider).then(m => {
+      mapManager.current = m;
+      map.current = mapProvider.getMap();
+    });
   }, []);
 
   useEffect(() => {
@@ -72,9 +73,10 @@ function App() {
   }, [mapMarkers]);
 
   const onUpdate = async () => {
+    console.log("Updating markers", mapManager.current);
     if (!map.current) return;
     const bounds = map.current.getBounds();
-    const markers = new Array<MapMarker>();
+    const markers = new Array<MapMarkerData>();
 
     const centers = [
       { lat: 51.505, lng: -0.09 },
@@ -112,27 +114,34 @@ function App() {
         lng: lng,
         tooltip: {
           style: {
-            height: 64,
-            width: 96,
-            margin: 8,
-            radius: 12,
+            dimensions: {
+              height: 64,
+              width: 96,
+              margin: 8,
+              radius: 12,
+            }
           },
           body: getTooltipBody,
         },
         pin: {
           style: {
-            height: 16,
-            width: 16,
-            radius: 8,
+            dimensions: {
+              height: 16,
+              width: 16,
+              padding: 2,
+              radius: 8,
+            }
           },
           body: getPinBody,
         },
         popup: {
           style: {
-            height: 128,
-            width: 156,
-            margin: 8,
-            radius: 16,
+            dimensions: {
+              height: 128,
+              width: 156,
+              margin: 8,
+              radius: 16,
+            }
           },
           body: getPopupBody,
         },
@@ -150,11 +159,6 @@ function App() {
   const onRemove = () => {
     if (!mapManager.current) return;
     mapManager.current.removeMarkers();
-  };
-
-  const onMapClick = () => {
-    if (!mapManager.current) return;
-    mapManager.current.hidePopup();
   };
 
   const getPinBody = async (id: string) => {
